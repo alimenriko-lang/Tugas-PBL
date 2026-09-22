@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/Backend/Console.sql" value="67a3a400-7f3b-4757-84f8-4565fe39db18" />
+    <file url="file://$PROJECT_DIR$/Backend/models/taskModel.mjs" value="67a3a400-7f3b-4757-84f8-4565fe39db18" />
+    <file url="file://$PROJECT_DIR$/Backend/models/userModel.mjs" value="67a3a400-7f3b-4757-84f8-4565fe39db18" />
+  </component>
+</project>
