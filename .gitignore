@@ -1,0 +1,13 @@
+# File sensitiv/kredensial
+.env
+*.pem
+
+# Folder depedensi dan build output
+node_module/
+dist/
+build/
+
+# Log dan File sementara sistem operasi
+.DS_Store
+Thumbs.db
+
