@@ -62,8 +62,8 @@ export default function Dashboard() {
         taskService.getStats()
       ]);
 
-      setTasks(tasksRes.tasks || []);
-      setStats(statsRes);
+      setTasks(Array.isArray(tasksRes?.tasks) ? tasksRes.tasks : []);
+      setStats(statsRes && typeof statsRes === 'object' && typeof statsRes.total === 'number' ? statsRes : { total: 0, pending: 0, in_progress: 0, completed: 0 });
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
       setError(err.message || 'Gagal memuat data task.');

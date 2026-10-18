@@ -8,21 +8,44 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(localStorage.getItem('taskflow_token') || null);
     const [loading, setLoading] = useState(true);
 
+    const logout = () => {
+        localStorage.removeItem('taskflow_token');
+        localStorage.removeItem('taskflow_user');
+        setToken(null);
+        setUser(null);
+    };
+
     useEffect(() => {
+        let isMounted = true;
+
         const verifyUser = async () => {
             if (token) {
                 try {
                     const data = await authService.getMe();
-                    setUser(data.user);
+                    if (isMounted) {
+                        if (data && data.user) {
+                            setUser(data.user);
+                        } else {
+                            logout();
+                        }
+                    }
                 } catch (error) {
                     console.error('Session expired or invalid token:', error.message);
-                    logout();
+                    if (isMounted) {
+                        logout();
+                    }
                 }
             }
-            setLoading(false);
+            if (isMounted) {
+                setLoading(false);
+            }
         };
 
         verifyUser();
+
+        return () => {
+            isMounted = false;
+        };
     }, [token]);
 
     const login = async (credentials) => {
@@ -41,13 +64,6 @@ export const AuthProvider = ({ children }) => {
         setToken(data.token);
         setUser(data.user);
         return data;
-    };
-
-    const logout = () => {
-        localStorage.removeItem('taskflow_token');
-        localStorage.removeItem('taskflow_user');
-        setToken(null);
-        setUser(null);
     };
 
     return (

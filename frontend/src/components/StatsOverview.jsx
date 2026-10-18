@@ -2,13 +2,18 @@ import React from 'react';
 import { CheckCircle2, Clock, ListTodo, TrendingUp } from 'lucide-react';
 
 export default function StatsOverview({ stats = { total: 0, pending: 0, in_progress: 0, completed: 0 } }) {
-  const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+  const safeStats = stats || { total: 0, pending: 0, in_progress: 0, completed: 0 };
+  const total = Number(safeStats.total) || 0;
+  const completed = Number(safeStats.completed) || 0;
+  const pending = Number(safeStats.pending) || 0;
+  const in_progress = Number(safeStats.in_progress) || 0;
+  const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   const cards = [
     {
       title: 'Pending & To Do',
-      value: stats.pending,
-      subtitle: `${stats.pending} task perlu diselesaikan`,
+      value: pending,
+      subtitle: `${pending} task perlu diselesaikan`,
       icon: Clock,
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
@@ -16,8 +21,8 @@ export default function StatsOverview({ stats = { total: 0, pending: 0, in_progr
     },
     {
       title: 'In Progress',
-      value: stats.in_progress,
-      subtitle: `${stats.in_progress} task sedang berjalan`,
+      value: in_progress,
+      subtitle: `${in_progress} task sedang berjalan`,
       icon: ListTodo,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
@@ -25,8 +30,8 @@ export default function StatsOverview({ stats = { total: 0, pending: 0, in_progr
     },
     {
       title: 'Completed',
-      value: stats.completed,
-      subtitle: `${stats.completed} task berhasil selesai`,
+      value: completed,
+      subtitle: `${completed} task berhasil selesai`,
       icon: CheckCircle2,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',

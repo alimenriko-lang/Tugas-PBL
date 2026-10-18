@@ -39,7 +39,8 @@ export default function TaskCard({ task, onEdit, onDelete, onStatusChange }) {
     }
   };
 
-  const priorityStyle = priorityConfig[task.priority] || priorityConfig.medium;
+  const priorityKey = String(task.priority || 'medium').toLowerCase();
+  const priorityStyle = priorityConfig[priorityKey] || priorityConfig.medium;
 
   // Style Status
   const statusConfig = {
@@ -48,7 +49,8 @@ export default function TaskCard({ task, onEdit, onDelete, onStatusChange }) {
     completed: { label: 'Completed', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
   };
 
-  const statusStyle = statusConfig[task.status] || statusConfig.pending;
+  const statusKey = String(task.status || 'pending').toLowerCase().replace(' ', '_');
+  const statusStyle = statusConfig[statusKey] || statusConfig.pending;
 
   return (
     <div className={`bg-white rounded-2xl border transition-all p-5 shadow-xs hover:shadow-md ${

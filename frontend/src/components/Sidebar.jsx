@@ -20,12 +20,13 @@ export default function Sidebar({
   stats = { total: 0, pending: 0, in_progress: 0, completed: 0 }
 }) {
   const { user, logout } = useAuth();
+  const safeStats = stats || { total: 0, pending: 0, in_progress: 0, completed: 0 };
 
   const coreNavItems = [
-    { id: 'all', label: 'Semua Task', icon: CheckSquare, count: stats.total },
-    { id: 'today', label: 'Hari Ini', icon: Calendar, count: stats.pending },
-    { id: 'upcoming', label: 'Mendatang', icon: Clock, count: stats.in_progress },
-    { id: 'completed', label: 'Selesai', icon: CheckCircle2, count: stats.completed },
+    { id: 'all', label: 'Semua Task', icon: CheckSquare, count: safeStats.total || 0 },
+    { id: 'today', label: 'Hari Ini', icon: Calendar, count: safeStats.pending || 0 },
+    { id: 'upcoming', label: 'Mendatang', icon: Clock, count: safeStats.in_progress || 0 },
+    { id: 'completed', label: 'Selesai', icon: CheckCircle2, count: safeStats.completed || 0 },
   ];
 
   const categories = [
@@ -36,9 +37,10 @@ export default function Sidebar({
   ];
 
   // Inisial nama user untuk avatar
-  const initials = user?.name
+  const initials = user?.name?.trim()
     ? user.name
-        .split(' ')
+        .trim()
+        .split(/\s+/)
         .map((n) => n[0])
         .join('')
         .toUpperCase()

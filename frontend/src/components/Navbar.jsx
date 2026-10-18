@@ -5,9 +5,10 @@ import { useAuth } from '../context/AuthContext';
 export default function Navbar({ onOpenCreateModal, searchInput, setSearchInput }) {
   const { user } = useAuth();
 
-  const initials = user?.name
+  const initials = user?.name?.trim()
     ? user.name
-        .split(' ')
+        .trim()
+        .split(/\s+/)
         .map((n) => n[0])
         .join('')
         .toUpperCase()
