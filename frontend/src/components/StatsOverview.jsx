@@ -49,27 +49,27 @@ export default function StatsOverview({ stats = { total: 0, pending: 0, in_progr
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {cards.map((card, index) => {
         const Icon = card.icon;
         return (
           <div
             key={index}
-            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow"
+            className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow"
           >
-            <div>
-              <p className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
+            <div className="min-w-0 pr-2">
+              <p className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-slate-400 uppercase truncate">
                 {card.title}
               </p>
-              <h3 className="text-2xl sm:text-3xl font-bold text-slate-800 mt-1">
+              <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 mt-0.5 sm:mt-1 truncate">
                 {card.value}
               </h3>
-              <p className="text-xs text-slate-500 mt-1 font-medium">
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 font-medium truncate">
                 {card.subtitle}
               </p>
             </div>
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${card.bgColor} ${card.borderColor} ${card.color}`}>
-              <Icon className="w-5 h-5" />
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 border ${card.bgColor} ${card.borderColor} ${card.color}`}>
+              <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
         );

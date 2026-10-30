@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.mjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node test_oauth.mjs",
+    "test:oauth": "node test_oauth.mjs",
     "dev": "node --watch index.mjs"
   },
   "keywords": [],
@@ -17,6 +18,7 @@
     "dotenv": "^18.0.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.24.4"
+    "mysql2": "^3.24.4",
+    "nodemailer": "^10.2.1"
   }
 }

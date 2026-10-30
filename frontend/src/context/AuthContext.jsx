@@ -5,7 +5,20 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [token, setToken] = useState(localStorage.getItem('taskflow_token') || null);
+    const [token, setToken] = useState(() => {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const oauthToken = params.get('oauth_token');
+            if (oauthToken) {
+                localStorage.setItem('taskflow_token', oauthToken);
+                // Bersihkan query param oauth_token dari URL tanpa reload
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+                return oauthToken;
+            }
+        } catch (_) {}
+        return localStorage.getItem('taskflow_token') || null;
+    });
     const [loading, setLoading] = useState(true);
 
     const logout = () => {
@@ -25,6 +38,7 @@ export const AuthProvider = ({ children }) => {
                     if (isMounted) {
                         if (data && data.user) {
                             setUser(data.user);
+                            localStorage.setItem('taskflow_user', JSON.stringify(data.user));
                         } else {
                             logout();
                         }
@@ -66,8 +80,16 @@ export const AuthProvider = ({ children }) => {
         return data;
     };
 
+    const updateUser = (userData) => {
+        setUser((prev) => {
+            const next = { ...(prev || {}), ...(userData || {}) };
+            localStorage.setItem('taskflow_user', JSON.stringify(next));
+            return next;
+        });
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, token, login, register, logout, loading, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
 import TaskFlowLogo from '../components/TaskFlowLogo';
 import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/api.mjs';
 
-export default function Login({ onSwitchToRegister }) {
+export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -11,6 +12,26 @@ export default function Login({ onSwitchToRegister }) {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Periksa apakah terdapat error dari OAuth redirect
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const oauthError = params.get('oauth_error');
+      if (oauthError) {
+        setError(oauthError);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleGoogleLogin = () => {
+    window.location.href = authService.getGoogleAuthUrl();
+  };
+
+  const handleGithubLogin = () => {
+    window.location.href = authService.getGithubAuthUrl();
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,8 +69,8 @@ export default function Login({ onSwitchToRegister }) {
         <div className="space-y-3 mb-6">
           <button
             type="button"
-            onClick={() => alert('Versi Demo Oii: Silakan gunakan formulir email di bawah ya, lagi demo.')}
-            className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-slate-50 hover:bg-slate-100 active:bg-slate-200/70 border border-slate-200/80 rounded-xl text-sm font-medium text-slate-700 transition-all"
+            onClick={handleGoogleLogin}
+            className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-slate-50 hover:bg-slate-100 active:bg-slate-200/70 border border-slate-200/80 rounded-xl text-sm font-medium text-slate-700 transition-all cursor-pointer"
           >
             {/* Google Icon */}
             <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -75,8 +96,8 @@ export default function Login({ onSwitchToRegister }) {
 
           <button
             type="button"
-            onClick={() => alert('Versi Demo Oii: Silakan gunakan formulir email di bawah ya, lagi demo.')}
-            className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-slate-50 hover:bg-slate-100 active:bg-slate-200/70 border border-slate-200/80 rounded-xl text-sm font-medium text-slate-700 transition-all"
+            onClick={handleGithubLogin}
+            className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-slate-50 hover:bg-slate-100 active:bg-slate-200/70 border border-slate-200/80 rounded-xl text-sm font-medium text-slate-700 transition-all cursor-pointer"
           >
             {/* GitHub Icon */}
             <svg className="w-4 h-4 fill-slate-800" viewBox="0 0 24 24">
@@ -130,8 +151,8 @@ export default function Login({ onSwitchToRegister }) {
               </label>
               <button
                 type="button"
-                onClick={() => alert('Ya kasian deh lupa password !! ')}
-                className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+                onClick={onSwitchToForgotPassword}
+                className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer"
               >
                 Lupa password?
               </button>
@@ -151,7 +172,7 @@ export default function Login({ onSwitchToRegister }) {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -176,7 +197,7 @@ export default function Login({ onSwitchToRegister }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-70 text-white font-medium text-sm rounded-xl shadow-lg shadow-indigo-200/70 flex items-center justify-center gap-2 transition-all group mt-2"
+            className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-70 text-white font-medium text-sm rounded-xl shadow-lg shadow-indigo-200/70 flex items-center justify-center gap-2 transition-all group mt-2 cursor-pointer"
           >
             <span>{loading ? 'Sedang Proses' : 'Klik ini buat Masuk'}</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -189,7 +210,7 @@ export default function Login({ onSwitchToRegister }) {
           <button
             type="button"
             onClick={onSwitchToRegister}
-            className="font-semibold text-indigo-600 hover:text-indigo-700 underline-offset-2 hover:underline transition-colors"
+            className="font-semibold text-indigo-600 hover:text-indigo-700 underline-offset-2 hover:underline transition-colors cursor-pointer"
           >
             Ayo Daftar Gratis Disini
           </button>

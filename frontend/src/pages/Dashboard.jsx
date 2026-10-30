@@ -2,13 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
   Filter,
-  Search,
-  Zap,
-  CheckCircle,
+  CalendarDays,
   Inbox,
   AlertCircle,
-  RefreshCw,
-  Sparkles
+  RefreshCw
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
@@ -16,6 +13,8 @@ import StatsOverview from '../components/StatsOverview';
 import TaskCard from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
+import AccountSettings from './AccountSettings';
+import TaskCalendarModal from '../components/TaskCalendarModal';
 import { taskService } from '../services/api.mjs';
 
 export default function Dashboard() {
@@ -24,6 +23,13 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+
+  // View state: 'dashboard' | 'settings'
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [settingsTab, setSettingsTab] = useState('profile');
+
+  // Mobile sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Filters
   const [activeCoreFilter, setActiveCoreFilter] = useState('all'); // all, today, upcoming, completed
@@ -34,6 +40,7 @@ export default function Dashboard() {
 
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [deletingTask, setDeletingTask] = useState(null);
 
@@ -121,10 +128,28 @@ export default function Dashboard() {
     setIsModalOpen(true);
   };
 
+  // Open Create Modal with pre-filled due_date from calendar
+  const handleCreateTaskForDate = (dateStr) => {
+    setEditingTask({ due_date: dateStr });
+    setIsModalOpen(true);
+  };
+
+  // Render Account Settings view
+  if (currentView === 'settings') {
+    return (
+      <AccountSettings
+        initialTab={settingsTab}
+        onBackToDashboard={() => setCurrentView('dashboard')}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f8fafc] flex">
-      {/* Sidebar */}
+      {/* Sidebar (Responsive Desktop & Mobile Drawer) */}
       <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
         activeFilter={activeCoreFilter}
         setActiveFilter={(filter) => {
           setActiveCoreFilter(filter);
@@ -133,6 +158,10 @@ export default function Dashboard() {
         activeCategory={activeCategory}
         setActiveCategory={setActiveCategory}
         stats={stats}
+        onOpenSettings={(tab) => {
+          setSettingsTab(tab || 'profile');
+          setCurrentView('settings');
+        }}
       />
 
       {/* Main Content */}
@@ -142,12 +171,17 @@ export default function Dashboard() {
           onOpenCreateModal={openCreateModal}
           searchInput={searchInput}
           setSearchInput={setSearchInput}
+          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+          onOpenSettings={(tab) => {
+            setSettingsTab(tab || 'profile');
+            setCurrentView('settings');
+          }}
         />
 
         {/* Page Body */}
-        <main className="flex-1 p-6 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-5 sm:space-y-6">
           {/* Top Banner / Breadcrumb */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
                 <span>Task Dashboard</span>
@@ -162,14 +196,14 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 self-start sm:self-auto">
+            <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
               <button
                 type="button"
                 onClick={() => {
                   setRefreshing(true);
                   fetchData();
                 }}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-indigo-600' : ''}`} />
                 <span>Refresh</span>
@@ -178,7 +212,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={openCreateModal}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-sm shadow-indigo-200"
+                className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-sm shadow-indigo-200 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[3]" />
                 <span>Tambah Tugas</span>
@@ -190,10 +224,10 @@ export default function Dashboard() {
           <StatsOverview stats={stats} />
 
           {/* Filters & Control Bar */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3 sm:p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
             {/* Status Filter Buttons */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-              <span className="text-xs font-semibold text-slate-400 mr-2 flex items-center gap-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-thin">
+              <span className="text-xs font-semibold text-slate-400 mr-1 sm:mr-2 flex items-center gap-1 shrink-0">
                 <Filter className="w-3.5 h-3.5" />
                 Status:
               </span>
@@ -209,7 +243,7 @@ export default function Dashboard() {
                     setStatusFilter(s.id);
                     setActiveCoreFilter('all');
                   }}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all whitespace-nowrap cursor-pointer shrink-0 ${
                     statusFilter === s.id
                       ? 'bg-slate-900 text-white shadow-xs'
                       : 'text-slate-600 hover:bg-slate-100'
@@ -221,7 +255,7 @@ export default function Dashboard() {
             </div>
 
             {/* Priority and Category Filters */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
               <span className="text-xs font-semibold text-slate-400">Priority:</span>
               <select
                 value={priorityFilter}
@@ -258,7 +292,7 @@ export default function Dashboard() {
                 <p className="text-xs text-slate-400 mt-3 font-medium">Memuat data task...</p>
               </div>
             ) : tasks.length === 0 ? (
-              <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-12 text-center">
+              <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-8 sm:p-12 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
                   <Inbox className="w-6 h-6" />
                 </div>
@@ -273,14 +307,14 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={openCreateModal}
-                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
                 >
                   <Plus className="w-4 h-4 stroke-[2.5]" />
                   <span>Tambah Task Baru</span>
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {tasks.map((task) => (
                   <TaskCard
                     key={task.id}
@@ -296,15 +330,29 @@ export default function Dashboard() {
         </main>
       </div>
 
-      {/* Floating Action Button (⚡) - Matches Screenshot 3 & 4 */}
+      {/* Floating Action Button - Kalender Tugas */}
       <button
         type="button"
-        onClick={openCreateModal}
-        title="Quick Create Task"
-        className="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white shadow-xl shadow-indigo-400/50 flex items-center justify-center transition-all z-30 group cursor-pointer"
+        onClick={() => setIsCalendarOpen(true)}
+        title="Kalender Tugas"
+        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 w-13 h-13 rounded-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white shadow-xl shadow-indigo-400/50 flex items-center justify-center transition-all z-30 group cursor-pointer"
+        aria-label="Buka Kalender Tugas"
       >
-        <Zap className="w-5 h-5 fill-current transition-transform group-hover:scale-110" />
+        <CalendarDays className="w-5 h-5 transition-transform group-hover:scale-110" />
       </button>
+
+      {/* Task Calendar Panel Modal */}
+      <TaskCalendarModal
+        isOpen={isCalendarOpen}
+        onClose={() => setIsCalendarOpen(false)}
+        tasks={tasks}
+        onEditTask={(task) => {
+          setEditingTask(task);
+          setIsModalOpen(true);
+        }}
+        onCreateTaskForDate={handleCreateTaskForDate}
+        onStatusChange={handleStatusChange}
+      />
 
       {/* Create / Edit Task Modal */}
       <TaskModal

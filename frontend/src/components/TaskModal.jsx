@@ -33,11 +33,15 @@ export default function TaskModal({
       
       // format due date YYYY-MM-DD
       if (initialTask.due_date) {
-        const d = new Date(initialTask.due_date);
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        setDueDate(`${yyyy}-${mm}-${dd}`);
+        if (typeof initialTask.due_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(initialTask.due_date)) {
+          setDueDate(initialTask.due_date);
+        } else {
+          const d = new Date(initialTask.due_date);
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          setDueDate(`${yyyy}-${mm}-${dd}`);
+        }
       } else {
         setDueDate('');
       }

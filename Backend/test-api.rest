@@ -1,1 +1,59 @@
-GET http://localhost:5000
+GET http://localhost:5000/api/database
+Accept: application/json
+
+### Inisiasi Google OAuth 2.0 (Redirect ke Google Consent Screen)
+GET http://localhost:5000/api/auth/google
+
+### Inisiasi GitHub OAuth (Redirect ke GitHub Authorization)
+GET http://localhost:5000/api/auth/github
+
+### Minta Reset Password (Lupa Password)
+POST http://localhost:5000/api/forgot-password
+Content-Type: application/json
+
+{
+  "email": "alimenriko@gmail.com"
+}
+
+### Verifikasi Token Reset
+GET http://localhost:5000/api/verify-reset-token/PASTE_TOKEN_DISINI
+Accept: application/json
+
+### Simpan Password Baru
+POST http://localhost:5000/api/reset-password
+Content-Type: application/json
+
+{
+  "token": "PASTE_TOKEN_DISINI",
+  "password": "PasswordBaru2026!",
+  "confirmPassword": "PasswordBaru2026!"
+}
+
+### Update Profil Pengguna
+PUT http://localhost:5000/api/profile
+Authorization: Bearer PASTE_JWT_TOKEN_DISINI
+Content-Type: application/json
+
+{
+  "name": "ALim Enriko"
+}
+
+### Ubah Password Pengguna (Verifikasi password saat ini & bcrypt hash)
+PUT http://localhost:5000/api/change-password
+Authorization: Bearer PASTE_JWT_TOKEN_DISINI
+Content-Type: application/json
+
+{
+  "currentPassword": "PasswordLama123!",
+  "newPassword": "PasswordBaru2026!",
+  "confirmPassword": "PasswordBaru2026!"
+}
+
+### Hapus Akun & Seluruh Tugas Milik Pengguna
+DELETE http://localhost:5000/api/account
+Authorization: Bearer PASTE_JWT_TOKEN_DISINI
+Content-Type: application/json
+
+{
+  "password": "PasswordSaatIni123!"
+}

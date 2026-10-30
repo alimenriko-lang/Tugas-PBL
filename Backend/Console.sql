@@ -8,8 +8,13 @@ CREATE TABLE users(
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    password VARCHAR(255) NULL,
+    auth_provider VARCHAR(50) DEFAULT 'local',
+    provider_id VARCHAR(255) NULL,
+    avatar_url VARCHAR(500) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reset_token VARCHAR(255) NULL,
+    reset_token_expires TIMESTAMP NULL
 );
 
 CREATE TABLE task(
@@ -28,8 +33,11 @@ CREATE TABLE task(
     REFERENCES users(id) ON DELETE CASCADE
 );
 
-
-
-
-
-
+CREATE TABLE contact_messages(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    email_sent_to_admin BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

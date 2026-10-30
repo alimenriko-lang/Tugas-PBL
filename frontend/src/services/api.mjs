@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+export const API_BASE_URL = 'http://localhost:5000/api';
 
 export const apiFetch = async (endpoint, options = {}) => {
     const token = localStorage.getItem('taskflow_token');
@@ -35,7 +35,30 @@ export const authService = {
         method: 'POST',
         body: JSON.stringify(credentials)
     }),
-    getMe: () => apiFetch('/me')
+    getMe: () => apiFetch('/me'),
+    forgotPassword: (email) => apiFetch('/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email })
+    }),
+    verifyResetToken: (token) => apiFetch(`/verify-reset-token/${encodeURIComponent(token)}`),
+    resetPassword: (resetData) => apiFetch('/reset-password', {
+        method: 'POST',
+        body: JSON.stringify(resetData)
+    }),
+    updateProfile: (profileData) => apiFetch('/profile', {
+        method: 'PUT',
+        body: JSON.stringify(profileData)
+    }),
+    changePassword: (passwordData) => apiFetch('/change-password', {
+        method: 'PUT',
+        body: JSON.stringify(passwordData)
+    }),
+    deleteAccount: (data) => apiFetch('/account', {
+        method: 'DELETE',
+        body: JSON.stringify(data)
+    }),
+    getGoogleAuthUrl: () => `${API_BASE_URL}/auth/google`,
+    getGithubAuthUrl: () => `${API_BASE_URL}/auth/github`
 };
 
 export const taskService = {
