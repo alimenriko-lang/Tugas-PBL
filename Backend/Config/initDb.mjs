@@ -39,11 +39,19 @@ export const initDatabase = async () => {
         priority ENUM('Low', 'Medium', 'High') DEFAULT 'Medium',
         category VARCHAR(100) DEFAULT 'Work Project',
         due_date DATE NULL,
+        due_time VARCHAR(20) NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
+
+    // Tambahkan kolom jika tabel task sudah ada sebelumnya
+    try {
+      await db.query(`ALTER TABLE task ADD COLUMN IF NOT EXISTS due_time VARCHAR(20) NULL`);
+    } catch (_) {
+      // Abaikan jika database engine tidak mendukung ADD COLUMN IF NOT EXISTS
+    }
 
     // Tabel pesan kontak dari Landing Page
     await db.query(`

@@ -34,7 +34,7 @@ export const getTaskById = async (req, res) => {
 
 export const createTask = async (req, res) => {
   try {
-    const { title, description, status, priority, category, due_date } = req.body || {};
+    const { title, description, status, priority, category, due_date, due_time } = req.body || {};
 
     if (!title || !String(title).trim()) {
       return res.status(400).json({ message: 'Judul task wajib diisi.' });
@@ -47,6 +47,7 @@ export const createTask = async (req, res) => {
       priority: priority || 'medium',
       category: category || 'Work Project',
       due_date: due_date || null,
+      due_time: due_time || null,
     });
 
     const task = await Task.getById(insertId, req.user.id);

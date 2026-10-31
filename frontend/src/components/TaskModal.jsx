@@ -2,6 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Flag, Trash2, Check, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+// Helper konversi format 12 jam (AM/PM) atau string sembarang ke format 24 jam (HH:mm)
+const to24Hour = (timeStr) => {
+  if (!timeStr) return '';
+  const trimmed = String(timeStr).trim();
+  // Jika sudah format HH:mm (00:00 - 23:59)
+  const match24 = trimmed.match(/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/);
+  if (match24) {
+    return `${match24[1].padStart(2, '0')}:${match24[2]}`;
+  }
+  // Jika format 12 jam dengan AM/PM (misal: 10:00 AM, 02:30 PM)
+  const match12 = trimmed.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (match12) {
+    let hours = parseInt(match12[1], 10);
+    const minutes = match12[2].padStart(2, '0');
+    const modifier = match12[3] ? match12[3].toUpperCase() : null;
+    if (modifier === 'PM' && hours < 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, '0')}:${minutes}`;
+  }
+  return trimmed;
+};
+
+// Helper mendapatkan tanggal dan waktu saat ini (lokal) dalam format 24 jam
+const getCurrentDateTime = () => {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+  return {
+    date: `${yyyy}-${mm}-${dd}`,
+    time: `${hh}:${min}`,
+  };
+};
+
 export default function TaskModal({
   isOpen,
   onClose,
@@ -18,12 +54,14 @@ export default function TaskModal({
   const [priority, setPriority] = useState('medium');
   const [status, setStatus] = useState('pending');
   const [dueDate, setDueDate] = useState('');
-  const [dueTime, setDueTime] = useState('10:00 AM');
+  const [dueTime, setDueTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Populate data saat modal dibuka
   useEffect(() => {
+    const current = getCurrentDateTime();
+
     if (initialTask) {
       setTitle(initialTask.title || '');
       setDescription(initialTask.description || '');
@@ -43,25 +81,22 @@ export default function TaskModal({
           setDueDate(`${yyyy}-${mm}-${dd}`);
         }
       } else {
-        setDueDate('');
+        // Jika tidak ada due_date, defaultkan ke hari sekarang
+        setDueDate(current.date);
       }
 
-      setDueTime(initialTask.due_time || '10:00 AM');
+      // Format due_time ke 24 jam (00:00 - 23:59), sinkronkan dengan jam saat ini jika kosong
+      setDueTime(to24Hour(initialTask.due_time) || current.time);
     } else {
-      // reset default untuk create task
+      // Reset dan sinkronkan dengan tanggal & waktu sekarang (24 jam)
       setTitle('');
       setDescription('');
       setCategory('Work Projects');
       setPriority('medium');
       setStatus('pending');
       
-      // Default date to today
-      const today = new Date();
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      setDueDate(`${yyyy}-${mm}-${dd}`);
-      setDueTime('10:00 AM');
+      setDueDate(current.date);
+      setDueTime(current.time);
     }
     setError('');
   }, [initialTask, isOpen]);
@@ -79,6 +114,9 @@ export default function TaskModal({
     setError('');
 
     try {
+      // Pastikan format time selalu 24 jam (HH:mm)
+      const sanitizedTime = to24Hour(dueTime) || null;
+
       await onSubmit({
         title: title.trim(),
         description: description.trim(),
@@ -86,7 +124,7 @@ export default function TaskModal({
         priority,
         status,
         due_date: dueDate || null,
-        due_time: dueTime || null
+        due_time: sanitizedTime
       });
       onClose();
     } catch (err) {
@@ -114,7 +152,7 @@ export default function TaskModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
+            className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -190,7 +228,7 @@ export default function TaskModal({
                 <button
                   type="button"
                   onClick={() => setPriority('low')}
-                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     priority === 'low'
                       ? 'bg-white text-slate-800 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800'
@@ -201,7 +239,7 @@ export default function TaskModal({
                 <button
                   type="button"
                   onClick={() => setPriority('medium')}
-                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-all ${
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer ${
                     priority === 'medium'
                       ? 'bg-white text-indigo-700 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800'
@@ -213,7 +251,7 @@ export default function TaskModal({
                 <button
                   type="button"
                   onClick={() => setPriority('high')}
-                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-all ${
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer ${
                     priority === 'high'
                       ? 'bg-rose-100 text-rose-700 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800'
@@ -237,7 +275,7 @@ export default function TaskModal({
                 <button
                   type="button"
                   onClick={() => setStatus('pending')}
-                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     status === 'pending'
                       ? 'bg-indigo-600 text-white shadow-xs'
                       : 'text-slate-500 hover:text-slate-800'
@@ -248,7 +286,7 @@ export default function TaskModal({
                 <button
                   type="button"
                   onClick={() => setStatus('in_progress')}
-                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     status === 'in_progress'
                       ? 'bg-indigo-600 text-white shadow-xs'
                       : 'text-slate-500 hover:text-slate-800'
@@ -259,7 +297,7 @@ export default function TaskModal({
                 <button
                   type="button"
                   onClick={() => setStatus('completed')}
-                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                     status === 'completed'
                       ? 'bg-emerald-600 text-white shadow-xs'
                       : 'text-slate-500 hover:text-slate-800'
@@ -270,27 +308,36 @@ export default function TaskModal({
               </div>
             </div>
 
-            {/* Waktu & Tanggal */}
+            {/* Waktu & Tanggal (Format 24 Jam: 00:00 - 23:59) */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                {isEditing ? 'Linimasa Tenggat' : 'Tanggal & Waktu tenggat'}
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-700">
+                  {isEditing ? 'Linimasa Tenggat' : 'Tanggal & Waktu tenggat'}
+                </label>
+                <span className="text-[10px] font-medium text-slate-400">
+                  Jam 00:00 - 23:59
+                </span>
+              </div>
               <div className="grid grid-cols-2 gap-1.5">
-                <div className="relative rounded-xl bg-slate-50/70 border border-slate-200">
+                {/* Tanggal */}
+                <div className="relative rounded-xl bg-slate-50/70 border border-slate-200 flex items-center px-2 py-1.5 focus-within:bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
                   <input
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full pl-2 pr-1 py-1.5 bg-transparent text-[11px] font-medium text-slate-700 outline-none"
+                    className="w-full bg-transparent text-[11px] font-medium text-slate-700 outline-none cursor-pointer"
                   />
                 </div>
-                <div className="relative rounded-xl bg-slate-50/70 border border-slate-200">
+
+                {/* Jam format 24 jam (00:00 - 23:59) */}
+                <div className="relative rounded-xl bg-slate-50/70 border border-slate-200 flex items-center px-2 py-1.5 focus-within:bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+                  <Clock className="w-3.5 h-3.5 text-slate-400 mr-1.5 shrink-0" />
                   <input
-                    type="text"
+                    type="time"
+                    step="60"
                     value={dueTime}
                     onChange={(e) => setDueTime(e.target.value)}
-                    placeholder="10:00 AM"
-                    className="w-full px-2 py-1.5 bg-transparent text-[11px] font-medium text-slate-700 outline-none text-center"
+                    className="w-full bg-transparent text-[11px] font-semibold text-slate-700 outline-none text-center cursor-pointer"
                   />
                 </div>
               </div>

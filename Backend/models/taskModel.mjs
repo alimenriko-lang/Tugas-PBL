@@ -33,6 +33,7 @@ const normalizeTask = (task) => ({
   ...task,
   status: normalizeStatus(task.status),
   priority: normalizePriority(task.priority),
+  due_time: task.due_time || null,
 });
 
 const Task = {
@@ -92,10 +93,11 @@ const Task = {
       status = 'pending',
       category = 'Work Project',
       due_date = null,
+      due_time = null,
     } = data;
 
     const [result] = await db.query(
-      'INSERT INTO task (user_id, title, description, status, priority, category, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO task (user_id, title, description, status, priority, category, due_date, due_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [
         userId,
         String(title).trim(),
@@ -104,6 +106,7 @@ const Task = {
         mapPriorityToDb(priority),
         String(category || 'Work Project'),
         due_date || null,
+        due_time || null,
       ]
     );
 
@@ -125,9 +128,10 @@ const Task = {
     const status = merged.status ?? currentTask.status;
     const category = String(merged.category ?? currentTask.category ?? 'Work Project');
     const due_date = merged.due_date ?? currentTask.due_date ?? null;
+    const due_time = merged.due_time ?? currentTask.due_time ?? null;
 
     const [result] = await db.query(
-      'UPDATE task SET title = ?, description = ?, priority = ?, status = ?, category = ?, due_date = ? WHERE id = ? AND user_id = ?',
+      'UPDATE task SET title = ?, description = ?, priority = ?, status = ?, category = ?, due_date = ?, due_time = ? WHERE id = ? AND user_id = ?',
       [
         title,
         description,
@@ -135,6 +139,7 @@ const Task = {
         mapStatusToDb(status),
         category,
         due_date || null,
+        due_time || null,
         id,
         userId,
       ]

@@ -6,6 +6,7 @@ import {
   Plus,
   X,
   Calendar,
+  Clock,
   ArrowRight
 } from 'lucide-react';
 
@@ -478,6 +479,13 @@ export default function TaskCalendarModal({
                               <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-slate-50 text-slate-600 uppercase border border-slate-200">
                                 {task.priority}
                               </span>
+
+                              {task.due_time && (
+                                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
+                                  <Clock className="w-2.5 h-2.5 text-slate-400" />
+                                  <span>{task.due_time}</span>
+                                </span>
+                              )}
                             </div>
 
                             <h5 className={`text-xs sm:text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors truncate ${
