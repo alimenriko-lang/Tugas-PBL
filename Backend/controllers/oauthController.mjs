@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import Users from '../models/userModel.mjs';
 
-const getFrontendUrl = () => process.env.FRONTEND_URL || 'http://localhost:5173';
+const getFrontendUrl = () => process.env.FRONTEND_URL || 'https://taskeco.vercel.app';
 const getJwtSecret = () => process.env.JWT_SECRET || 'taskflow_super_secret_jwt_key_2026';
 
 const createToken = (user) => jwt.sign(
@@ -58,7 +58,7 @@ export const initiateGoogleAuth = async (req, res) => {
     const intent = req.query.intent === 'register' ? 'register' : 'login';
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const callbackUrl = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback';
+    const callbackUrl = process.env.GOOGLE_CALLBACK_URL || 'https://taskeco.onrender.com/api/auth/google/callback';
     const frontendUrl = getFrontendUrl();
     const fallbackView = intent === 'register' ? 'register' : 'login';
 
@@ -110,7 +110,7 @@ export const handleGoogleCallback = async (req, res) => {
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const callbackUrl = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback';
+    const callbackUrl = process.env.GOOGLE_CALLBACK_URL || 'https://taskeco.onrender.com/api/auth/google/callback';
 
     // 1. Tukar authorization code dengan access token
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -225,7 +225,7 @@ export const initiateGithubAuth = async (req, res) => {
     const intent = req.query.intent === 'register' ? 'register' : 'login';
     const clientId = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-    const callbackUrl = process.env.GITHUB_CALLBACK_URL || 'http://localhost:5000/api/auth/github/callback';
+    const callbackUrl = process.env.GITHUB_CALLBACK_URL || 'https://taskeco.onrender.com/api/auth/github/callback';
     const frontendUrl = getFrontendUrl();
     const fallbackView = intent === 'register' ? 'register' : 'login';
 
@@ -274,7 +274,7 @@ export const handleGithubCallback = async (req, res) => {
 
     const clientId = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-    const callbackUrl = process.env.GITHUB_CALLBACK_URL || 'http://localhost:5000/api/auth/github/callback';
+    const callbackUrl = process.env.GITHUB_CALLBACK_URL || 'https://taskeco.onrender.com/api/auth/github/callback';
 
     // 1. Tukar authorization code dengan access token
     const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {

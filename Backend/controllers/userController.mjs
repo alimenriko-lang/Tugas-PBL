@@ -293,7 +293,8 @@ export const forgotPassword = async (req, res) => {
 
     await Users.setResetToken(normalizedEmail, resetToken, expiresInMinutes);
 
-    const resetUrl = `http://localhost:5173/?resetToken=${resetToken}`;
+    const frontendBase = process.env.FRONTEND_URL || 'https://taskeco.vercel.app';
+    const resetUrl = `${frontendBase}/?resetToken=${resetToken}`;
     const smtpConfigured = Boolean(
       process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS
     );

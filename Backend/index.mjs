@@ -12,6 +12,10 @@ const PORT = Number(process.env.PORT) || 5000;
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'ok', service: 'TaskEco Backend API' });
+});
+
 app.get('/api/database', (req, res) => {
   res.status(200).json({ ok: true, message: 'TaskFlow API sudah berjalan' });
 });

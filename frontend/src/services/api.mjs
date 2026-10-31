@@ -1,4 +1,20 @@
-export const API_BASE_URL = 'http://localhost:5000/api';
+const getBackendBaseUrl = () => {
+    // 1. Jika ada environment variable dari Vercel/Vite
+    if (import.meta.env.VITE_API_BASE_URL) {
+        const raw = import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
+        return raw.endsWith('/api') ? raw : `${raw}/api`;
+    }
+
+    // 2. Jika sedang berjalan di lingkungan lokal development (localhost)
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        return 'http://localhost:5000/api';
+    }
+
+    // 3. Default produksi (Render backend)
+    return 'https://taskeco.onrender.com/api';
+};
+
+export const API_BASE_URL = getBackendBaseUrl();
 
 export const apiFetch = async (endpoint, options = {}) => {
     const token = localStorage.getItem('taskflow_token');

@@ -24,13 +24,19 @@ import {
   Sparkles,
 } from 'lucide-react';
 import dashboardPreviewImg from '../assets/dashboard-preview.png';
+import taskecoLogo from '../assets/taskeco-logo.png';
+import { API_BASE_URL } from '../services/api.mjs';
 
 // ─── Logo Component ──────────────────────────────────────────────────────────
 function Logo({ white = false }) {
   return (
     <div className="flex items-center gap-2.5 select-none">
-      <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-200">
-        <Check className="w-5 h-5 stroke-[3]" />
+      <div className="flex items-center justify-center w-9 h-9 shrink-0">
+        <img
+          src={taskecoLogo}
+          alt="TaskEco Logo"
+          className="w-full h-full object-contain select-none"
+        />
       </div>
       <div className="flex items-center gap-1.5">
         <span className={`text-xl font-bold tracking-tight ${white ? 'text-white' : 'text-slate-900'}`}>
@@ -722,7 +728,7 @@ function ContactSection() {
 
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/landing/contact', {
+      const res = await fetch(`${API_BASE_URL}/landing/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -907,7 +913,7 @@ function AIChatbot() {
 
     try {
       const history = newMsgs.slice(-8);
-      const res = await fetch('http://localhost:5000/api/landing/chat', {
+      const res = await fetch(`${API_BASE_URL}/landing/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, history }),
@@ -937,7 +943,7 @@ function AIChatbot() {
         ...prev,
         {
           role: 'model',
-          text: '⚠️ Tidak dapat terhubung ke server backend TaskEco di http://localhost:5000.',
+          text: '⚠️ Tidak dapat terhubung ke server backend TaskEco. Silakan periksa koneksi Anda.',
         },
       ]);
     } finally {
