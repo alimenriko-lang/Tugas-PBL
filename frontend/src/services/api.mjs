@@ -57,8 +57,8 @@ export const authService = {
         method: 'DELETE',
         body: JSON.stringify(data)
     }),
-    getGoogleAuthUrl: () => `${API_BASE_URL}/auth/google`,
-    getGithubAuthUrl: () => `${API_BASE_URL}/auth/github`
+    getGoogleAuthUrl: (intent = 'login') => `${API_BASE_URL}/auth/google?intent=${intent}`,
+    getGithubAuthUrl: (intent = 'login') => `${API_BASE_URL}/auth/github?intent=${intent}`
 };
 
 export const taskService = {

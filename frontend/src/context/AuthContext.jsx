@@ -11,15 +11,24 @@ export const AuthProvider = ({ children }) => {
             const oauthToken = params.get('oauth_token');
             if (oauthToken) {
                 localStorage.setItem('taskflow_token', oauthToken);
-                // Bersihkan query param oauth_token dari URL tanpa reload
-                const newUrl = window.location.pathname;
-                window.history.replaceState({}, document.title, newUrl);
                 return oauthToken;
             }
         } catch (_) {}
         return localStorage.getItem('taskflow_token') || null;
     });
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('oauth_token')) {
+                params.delete('oauth_token');
+                params.delete('provider');
+                const cleanQs = params.toString() ? `?${params.toString()}` : '';
+                window.history.replaceState({}, document.title, window.location.pathname + cleanQs);
+            }
+        } catch (_) {}
+    }, []);
 
     const logout = () => {
         localStorage.removeItem('taskflow_token');

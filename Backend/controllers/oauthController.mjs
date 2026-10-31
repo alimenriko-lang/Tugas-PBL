@@ -11,24 +11,42 @@ const createToken = (user) => jwt.sign(
   { expiresIn: '100d' }
 );
 
-// HMAC signed state untuk CSRF protection tanpa session
-const generateState = () => {
+// HMAC signed state untuk CSRF protection dan pelacakan alur intent (login atau register)
+const generateState = (intent = 'login') => {
   const nonce = crypto.randomBytes(16).toString('hex');
   const timestamp = Date.now().toString();
-  const signature = crypto.createHmac('sha256', getJwtSecret()).update(`${nonce}:${timestamp}`).digest('hex');
-  return `${nonce}.${timestamp}.${signature}`;
+  const safeIntent = intent === 'register' ? 'register' : 'login';
+  const payload = `${nonce}:${timestamp}:${safeIntent}`;
+  const signature = crypto.createHmac('sha256', getJwtSecret()).update(payload).digest('hex');
+  return `${nonce}.${timestamp}.${safeIntent}.${signature}`;
 };
 
 const verifyState = (state) => {
-  if (!state || typeof state !== 'string') return false;
+  if (!state || typeof state !== 'string') return null;
   const parts = state.split('.');
-  if (parts.length !== 3) return false;
-  const [nonce, timestamp, signature] = parts;
-  const expectedSignature = crypto.createHmac('sha256', getJwtSecret()).update(`${nonce}:${timestamp}`).digest('hex');
-  if (signature !== expectedSignature) return false;
-  // State berlaku 15 menit
-  const age = Date.now() - Number(timestamp);
-  return age >= 0 && age < 15 * 60 * 1000;
+
+  // Format baru 4 bagian: [nonce, timestamp, intent, signature]
+  if (parts.length === 4) {
+    const [nonce, timestamp, intent, signature] = parts;
+    const payload = `${nonce}:${timestamp}:${intent}`;
+    const expectedSignature = crypto.createHmac('sha256', getJwtSecret()).update(payload).digest('hex');
+    if (signature !== expectedSignature) return null;
+    const age = Date.now() - Number(timestamp);
+    if (age < 0 || age > 15 * 60 * 1000) return null;
+    return { intent: intent === 'register' ? 'register' : 'login' };
+  }
+
+  // Format lama 3 bagian: [nonce, timestamp, signature]
+  if (parts.length === 3) {
+    const [nonce, timestamp, signature] = parts;
+    const expectedSignature = crypto.createHmac('sha256', getJwtSecret()).update(`${nonce}:${timestamp}`).digest('hex');
+    if (signature !== expectedSignature) return null;
+    const age = Date.now() - Number(timestamp);
+    if (age < 0 || age > 15 * 60 * 1000) return null;
+    return { intent: 'login' };
+  }
+
+  return null;
 };
 
 // ==========================================
@@ -37,17 +55,19 @@ const verifyState = (state) => {
 
 export const initiateGoogleAuth = async (req, res) => {
   try {
+    const intent = req.query.intent === 'register' ? 'register' : 'login';
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const callbackUrl = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback';
     const frontendUrl = getFrontendUrl();
+    const fallbackView = intent === 'register' ? 'register' : 'login';
 
     if (!clientId || !clientSecret) {
       const errorMsg = 'Google OAuth belum dikonfigurasi di backend. Silakan isi GOOGLE_CLIENT_ID dan GOOGLE_CLIENT_SECRET pada file .env.';
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent(errorMsg)}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent(errorMsg)}`);
     }
 
-    const state = generateState();
+    const state = generateState(intent);
     const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     googleAuthUrl.searchParams.set('client_id', clientId);
     googleAuthUrl.searchParams.set('redirect_uri', callbackUrl);
@@ -60,28 +80,32 @@ export const initiateGoogleAuth = async (req, res) => {
     return res.redirect(googleAuthUrl.toString());
   } catch (error) {
     console.error('Error saat inisiasi Google OAuth:', error);
-    return res.redirect(`${getFrontendUrl()}/?oauth_error=${encodeURIComponent('Terjadi kesalahan saat memulai autentikasi Google.')}`);
+    return res.redirect(`${getFrontendUrl()}/?view=login&oauth_error=${encodeURIComponent('Terjadi kesalahan saat memulai autentikasi Google.')}`);
   }
 };
 
 export const handleGoogleCallback = async (req, res) => {
   const frontendUrl = getFrontendUrl();
+  const stateData = verifyState(req.query.state);
+  const intent = stateData?.intent || 'login';
+  const fallbackView = intent === 'register' ? 'register' : 'login';
+
   try {
     const { code, state, error, error_description } = req.query;
 
     if (error) {
       const msg = error === 'access_denied'
-        ? 'Login Google dibatalkan oleh pengguna.'
+        ? (intent === 'register' ? 'Pendaftaran Google dibatalkan oleh pengguna.' : 'Login Google dibatalkan oleh pengguna.')
         : (error_description || 'Autentikasi Google gagal.');
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent(msg)}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent(msg)}`);
     }
 
     if (!code) {
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent('Kode otorisasi Google tidak ditemukan.')}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent('Kode otorisasi Google tidak ditemukan.')}`);
     }
 
-    if (state && !verifyState(state)) {
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent('Sesi autentikasi Google kedaluwarsa atau tidak valid. Silakan coba kembali.')}`);
+    if (!stateData) {
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent('Sesi autentikasi Google kedaluwarsa atau tidak valid. Silakan coba kembali.')}`);
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -104,25 +128,25 @@ export const handleGoogleCallback = async (req, res) => {
     const tokenData = await tokenResponse.json();
     if (!tokenResponse.ok || !tokenData.access_token) {
       const errorMsg = tokenData.error_description || tokenData.error || 'Gagal menukarkan token otorisasi Google.';
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent(errorMsg)}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent(errorMsg)}`);
     }
 
-    // 2. Ambil informasi profil pengguna dari Google
+    // 2. Ambil profil dari Google
     const userinfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
 
     const googleUser = await userinfoResponse.json();
     if (!userinfoResponse.ok || !googleUser.sub) {
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent('Gagal mengambil data profil dari Google.')}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent('Gagal mengambil data profil dari Google.')}`);
     }
 
     if (!googleUser.email) {
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent('Akun Google tidak menyediakan alamat email yang valid.')}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent('Akun Google tidak menyediakan alamat email yang valid.')}`);
     }
 
     if (!googleUser.email_verified) {
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent('Email Google Anda belum diverifikasi oleh Google.')}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent('Email Google Anda belum diverifikasi oleh Google.')}`);
     }
 
     const normalizedEmail = googleUser.email.trim().toLowerCase();
@@ -130,29 +154,38 @@ export const handleGoogleCallback = async (req, res) => {
     const displayName = googleUser.name || googleUser.given_name || normalizedEmail.split('@')[0];
     const avatarUrl = googleUser.picture || null;
 
-    // 3. Validasi identitas dan penanganan duplikasi akun
+    // 3. Validasi identitas pengguna di database
     let user = await Users.getByProviderId('google', providerId);
-
     if (!user) {
-      const existingUserByEmail = await Users.getByEmail(normalizedEmail);
+      user = await Users.getByEmail(normalizedEmail);
+    }
 
-      if (existingUserByEmail) {
-        // Cegah linking jika akun sudah diikat ke provider lain
-        if (existingUserByEmail.auth_provider === 'github' && existingUserByEmail.provider_id) {
-          const msg = `Email ${normalizedEmail} sudah terdaftar menggunakan akun GitHub. Silakan masuk menggunakan GitHub.`;
-          return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent(msg)}`);
-        }
+    // ATURAN 1: JIKA DARI HALAMAN LOGIN
+    // Pengguna HARUS sudah terdaftar terlebih dahulu di database!
+    if (intent === 'login') {
+      if (!user) {
+        const errorMsg = `Akun Google (${normalizedEmail}) belum terdaftar. Silakan daftar terlebih dahulu sebelum login!`;
+        return res.redirect(`${frontendUrl}/?view=register&oauth_error=${encodeURIComponent(errorMsg)}`);
+      }
 
-        // Tautkan akun Google yang emailnya terverifikasi
-        await Users.linkOAuthProvider(existingUserByEmail.id, {
+      // Jika user sudah ada, perbarui provider Google jika belum ditautkan
+      if (user.auth_provider === 'local' || !user.provider_id) {
+        await Users.linkOAuthProvider(user.id, {
           auth_provider: 'google',
           provider_id: providerId,
-          avatar_url: avatarUrl,
+          avatar_url: avatarUrl || user.avatar_url,
         });
-
-        user = await Users.getById(existingUserByEmail.id);
-      } else {
-        // Buat akun baru pengguna Google
+        user = await Users.getById(user.id);
+      } else if (user.auth_provider === 'github' && user.provider_id !== providerId) {
+        const msg = `Email ${normalizedEmail} sudah terdaftar menggunakan akun GitHub. Silakan masuk menggunakan GitHub.`;
+        return res.redirect(`${frontendUrl}/?view=login&oauth_error=${encodeURIComponent(msg)}`);
+      }
+    }
+    // ATURAN 2: JIKA DARI HALAMAN REGISTER
+    // Pengguna mendaftar akun baru dengan Google
+    else {
+      if (!user) {
+        // Buat akun baru
         const insertId = await Users.createOAuthUser({
           name: displayName,
           email: normalizedEmail,
@@ -160,16 +193,26 @@ export const handleGoogleCallback = async (req, res) => {
           provider_id: providerId,
           avatar_url: avatarUrl,
         });
-
         user = await Users.getById(insertId);
+      } else {
+        // Akun sudah ada, tautkan dengan Google jika belum
+        if (user.auth_provider === 'local' || !user.provider_id) {
+          await Users.linkOAuthProvider(user.id, {
+            auth_provider: 'google',
+            provider_id: providerId,
+            avatar_url: avatarUrl || user.avatar_url,
+          });
+          user = await Users.getById(user.id);
+        }
       }
     }
 
+    // Berhasil Login/Register -> Arahkan LANGSUNG KE DASHBOARD!
     const token = createToken(user);
-    return res.redirect(`${frontendUrl}/?oauth_token=${encodeURIComponent(token)}&provider=google`);
+    return res.redirect(`${frontendUrl}/?view=dashboard&oauth_token=${encodeURIComponent(token)}&provider=google`);
   } catch (error) {
     console.error('Error pada Google OAuth callback:', error);
-    return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent('Terjadi kesalahan internal saat memproses autentikasi Google.')}`);
+    return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent('Terjadi kesalahan internal saat memproses autentikasi Google.')}`);
   }
 };
 
@@ -179,17 +222,19 @@ export const handleGoogleCallback = async (req, res) => {
 
 export const initiateGithubAuth = async (req, res) => {
   try {
+    const intent = req.query.intent === 'register' ? 'register' : 'login';
     const clientId = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
     const callbackUrl = process.env.GITHUB_CALLBACK_URL || 'http://localhost:5000/api/auth/github/callback';
     const frontendUrl = getFrontendUrl();
+    const fallbackView = intent === 'register' ? 'register' : 'login';
 
     if (!clientId || !clientSecret) {
       const errorMsg = 'GitHub OAuth belum dikonfigurasi di backend. Silakan isi GITHUB_CLIENT_ID dan GITHUB_CLIENT_SECRET pada file .env.';
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent(errorMsg)}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent(errorMsg)}`);
     }
 
-    const state = generateState();
+    const state = generateState(intent);
     const githubAuthUrl = new URL('https://github.com/login/oauth/authorize');
     githubAuthUrl.searchParams.set('client_id', clientId);
     githubAuthUrl.searchParams.set('redirect_uri', callbackUrl);
@@ -199,28 +244,32 @@ export const initiateGithubAuth = async (req, res) => {
     return res.redirect(githubAuthUrl.toString());
   } catch (error) {
     console.error('Error saat inisiasi GitHub OAuth:', error);
-    return res.redirect(`${getFrontendUrl()}/?oauth_error=${encodeURIComponent('Terjadi kesalahan saat memulai autentikasi GitHub.')}`);
+    return res.redirect(`${getFrontendUrl()}/?view=login&oauth_error=${encodeURIComponent('Terjadi kesalahan saat memulai autentikasi GitHub.')}`);
   }
 };
 
 export const handleGithubCallback = async (req, res) => {
   const frontendUrl = getFrontendUrl();
+  const stateData = verifyState(req.query.state);
+  const intent = stateData?.intent || 'login';
+  const fallbackView = intent === 'register' ? 'register' : 'login';
+
   try {
     const { code, state, error, error_description } = req.query;
 
     if (error) {
       const msg = error === 'access_denied'
-        ? 'Login GitHub dibatalkan oleh pengguna.'
+        ? (intent === 'register' ? 'Pendaftaran GitHub dibatalkan oleh pengguna.' : 'Login GitHub dibatalkan oleh pengguna.')
         : (error_description || 'Autentikasi GitHub gagal.');
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent(msg)}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent(msg)}`);
     }
 
     if (!code) {
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent('Kode otorisasi GitHub tidak ditemukan.')}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent('Kode otorisasi GitHub tidak ditemukan.')}`);
     }
 
-    if (state && !verifyState(state)) {
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent('Sesi autentikasi GitHub kedaluwarsa atau tidak valid. Silakan coba kembali.')}`);
+    if (!stateData) {
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent('Sesi autentikasi GitHub kedaluwarsa atau tidak valid. Silakan coba kembali.')}`);
     }
 
     const clientId = process.env.GITHUB_CLIENT_ID;
@@ -245,12 +294,12 @@ export const handleGithubCallback = async (req, res) => {
     const tokenData = await tokenResponse.json();
     if (!tokenResponse.ok || !tokenData.access_token) {
       const errorMsg = tokenData.error_description || tokenData.error || 'Gagal menukarkan token otorisasi GitHub.';
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent(errorMsg)}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent(errorMsg)}`);
     }
 
     const accessToken = tokenData.access_token;
 
-    // 2. Ambil profil pengguna dari GitHub
+    // 2. Ambil profil dari GitHub
     const userResponse = await fetch('https://api.github.com/user', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -261,10 +310,10 @@ export const handleGithubCallback = async (req, res) => {
 
     const githubUser = await userResponse.json();
     if (!userResponse.ok || !githubUser.id) {
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent('Gagal mengambil data profil dari GitHub.')}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent('Gagal mengambil data profil dari GitHub.')}`);
     }
 
-    // 3. Ambil daftar email terverifikasi pengguna dari GitHub
+    // 3. Ambil daftar email terverifikasi dari GitHub
     const emailsResponse = await fetch('https://api.github.com/user/emails', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -285,7 +334,7 @@ export const handleGithubCallback = async (req, res) => {
     }
 
     if (!verifiedEmail) {
-      return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent('Akun GitHub Anda tidak memiliki email yang terverifikasi. Harap verifikasi email pada akun GitHub Anda.')}`);
+      return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent('Akun GitHub Anda tidak memiliki email yang terverifikasi. Harap verifikasi email pada akun GitHub Anda.')}`);
     }
 
     const normalizedEmail = verifiedEmail.trim().toLowerCase();
@@ -293,28 +342,37 @@ export const handleGithubCallback = async (req, res) => {
     const displayName = githubUser.name || githubUser.login || normalizedEmail.split('@')[0];
     const avatarUrl = githubUser.avatar_url || null;
 
-    // 4. Validasi identitas dan penanganan duplikasi akun
+    // 4. Validasi identitas pengguna di database
     let user = await Users.getByProviderId('github', providerId);
-
     if (!user) {
-      const existingUserByEmail = await Users.getByEmail(normalizedEmail);
+      user = await Users.getByEmail(normalizedEmail);
+    }
 
-      if (existingUserByEmail) {
-        // Cegah linking jika akun sudah diikat ke provider lain
-        if (existingUserByEmail.auth_provider === 'google' && existingUserByEmail.provider_id) {
-          const msg = `Email ${normalizedEmail} sudah terdaftar menggunakan akun Google. Silakan masuk menggunakan Google.`;
-          return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent(msg)}`);
-        }
+    // ATURAN 1: JIKA DARI HALAMAN LOGIN
+    // Pengguna HARUS sudah terdaftar terlebih dahulu di database!
+    if (intent === 'login') {
+      if (!user) {
+        const errorMsg = `Akun GitHub (${normalizedEmail}) belum terdaftar. Silakan daftar terlebih dahulu sebelum login!`;
+        return res.redirect(`${frontendUrl}/?view=register&oauth_error=${encodeURIComponent(errorMsg)}`);
+      }
 
-        // Tautkan akun GitHub yang emailnya terverifikasi
-        await Users.linkOAuthProvider(existingUserByEmail.id, {
+      // Jika user sudah ada, perbarui provider GitHub jika belum ditautkan
+      if (user.auth_provider === 'local' || !user.provider_id) {
+        await Users.linkOAuthProvider(user.id, {
           auth_provider: 'github',
           provider_id: providerId,
-          avatar_url: avatarUrl,
+          avatar_url: avatarUrl || user.avatar_url,
         });
-
-        user = await Users.getById(existingUserByEmail.id);
-      } else {
+        user = await Users.getById(user.id);
+      } else if (user.auth_provider === 'google' && user.provider_id !== providerId) {
+        const msg = `Email ${normalizedEmail} sudah terdaftar menggunakan akun Google. Silakan masuk menggunakan Google.`;
+        return res.redirect(`${frontendUrl}/?view=login&oauth_error=${encodeURIComponent(msg)}`);
+      }
+    }
+    // ATURAN 2: JIKA DARI HALAMAN REGISTER
+    // Pengguna mendaftar akun baru dengan GitHub
+    else {
+      if (!user) {
         // Buat akun baru pengguna GitHub
         const insertId = await Users.createOAuthUser({
           name: displayName,
@@ -323,15 +381,25 @@ export const handleGithubCallback = async (req, res) => {
           provider_id: providerId,
           avatar_url: avatarUrl,
         });
-
         user = await Users.getById(insertId);
+      } else {
+        // User sudah ada, pastikan ditautkan ke GitHub
+        if (user.auth_provider === 'local' || !user.provider_id) {
+          await Users.linkOAuthProvider(user.id, {
+            auth_provider: 'github',
+            provider_id: providerId,
+            avatar_url: avatarUrl || user.avatar_url,
+          });
+          user = await Users.getById(user.id);
+        }
       }
     }
 
+    // Berhasil Login/Register -> Arahkan LANGSUNG KE DASHBOARD!
     const token = createToken(user);
-    return res.redirect(`${frontendUrl}/?oauth_token=${encodeURIComponent(token)}&provider=github`);
+    return res.redirect(`${frontendUrl}/?view=dashboard&oauth_token=${encodeURIComponent(token)}&provider=github`);
   } catch (error) {
     console.error('Error pada GitHub OAuth callback:', error);
-    return res.redirect(`${frontendUrl}/?oauth_error=${encodeURIComponent('Terjadi kesalahan internal saat memproses autentikasi GitHub.')}`);
+    return res.redirect(`${frontendUrl}/?view=${fallbackView}&oauth_error=${encodeURIComponent('Terjadi kesalahan internal saat memproses autentikasi GitHub.')}`);
   }
 };

@@ -4,7 +4,7 @@ import TaskFlowLogo from '../components/TaskFlowLogo';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api.mjs';
 
-export default function Register({ onSwitchToLogin }) {
+export default function Register({ onSwitchToLogin, onRegisterSuccess }) {
   const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -27,11 +27,11 @@ export default function Register({ onSwitchToLogin }) {
   }, []);
 
   const handleGoogleLogin = () => {
-    window.location.href = authService.getGoogleAuthUrl();
+    window.location.href = authService.getGoogleAuthUrl('register');
   };
 
   const handleGithubLogin = () => {
-    window.location.href = authService.getGithubAuthUrl();
+    window.location.href = authService.getGithubAuthUrl('register');
   };
 
   // kalkulasi kekuatan password
@@ -59,6 +59,9 @@ export default function Register({ onSwitchToLogin }) {
 
     try {
       await register({ name, email, password });
+      if (onRegisterSuccess) {
+        onRegisterSuccess();
+      }
     } catch (err) {
       setError(err.message || 'Registrasi gagal. Silakan coba lagi.');
     } finally {

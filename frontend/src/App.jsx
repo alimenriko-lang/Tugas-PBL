@@ -21,28 +21,56 @@ function AppContent() {
     }
   });
 
-  // Inisialisasi view awal berdasarkan URL pathname & params
+  // Inisialisasi view awal berdasarkan URL pathname & query params
   const [authView, setAuthView] = useState(() => {
     try {
       const searchParams = new URLSearchParams(window.location.search);
+      const viewParam = searchParams.get('view');
+      const oauthToken = searchParams.get('oauth_token');
       const pathname = window.location.pathname;
 
       if (searchParams.get('resetToken') || searchParams.get('token')) {
         return 'reset-password';
       }
-      if (pathname === '/login') return 'login';
-      if (pathname === '/register') return 'register';
-      if (pathname === '/dashboard') return 'dashboard';
+
+      // Jika ada token OAuth atau view=dashboard, LANGSUNG MASUK KE DASHBOARD
+      if (oauthToken || viewParam === 'dashboard') {
+        return 'dashboard';
+      }
+
+      if (viewParam === 'register' || pathname === '/register') {
+        return 'register';
+      }
+
+      if (viewParam === 'login' || pathname === '/login') {
+        return 'login';
+      }
+
+      if (pathname === '/dashboard') {
+        return 'dashboard';
+      }
+
+      // Jika sudah ada token login di localStorage, default langsung ke dashboard
+      if (localStorage.getItem('taskflow_token')) {
+        return 'dashboard';
+      }
+
       return 'landing';
     } catch {
       return 'landing';
     }
   });
 
-  // Jika user baru login dari form login/register, arahkan ke dashboard
+  // Ketika user berhasil login / register, pastikan langsung masuk ke dashboard bukan ke landing page
   useEffect(() => {
-    if (user && (authView === 'login' || authView === 'register')) {
-      setAuthView('dashboard');
+    const searchParams = new URLSearchParams(window.location.search);
+    const viewParam = searchParams.get('view');
+    const oauthToken = searchParams.get('oauth_token');
+
+    if (user) {
+      if (authView === 'login' || authView === 'register' || viewParam === 'dashboard' || oauthToken) {
+        setAuthView('dashboard');
+      }
     }
   }, [user, authView]);
 
@@ -57,66 +85,63 @@ function AppContent() {
     );
   }
 
-  // Handler tombol "Mulai Sekarang" (ke Dashboard jika login, ke Register jika belum)
-  const handleStartNow = () => {
-    if (user) {
-      setAuthView('dashboard');
-    } else {
-      setAuthView('register');
-    }
-  };
-
-  // State-based routing
-  if (authView === 'dashboard' && user) {
-    return <Dashboard onBackToLanding={() => setAuthView('landing')} />;
+  // Tampilkan Halaman Reset Password jika ada token
+  if (authView === 'reset-password' && resetToken) {
+    return (
+      <ResetPassword
+        token={resetToken}
+        onSuccess={() => setAuthView('login')}
+        onBackToLogin={() => setAuthView('login')}
+      />
+    );
   }
 
+  // Tampilkan Halaman Lupa Password
+  if (authView === 'forgot-password') {
+    return (
+      <ForgotPassword
+        onBackToLogin={() => setAuthView('login')}
+      />
+    );
+  }
+
+  // Tampilkan Halaman Register
   if (authView === 'register') {
     return (
       <Register
         onSwitchToLogin={() => setAuthView('login')}
-        onSwitchToLanding={() => setAuthView('landing')}
+        onRegisterSuccess={() => setAuthView('dashboard')}
       />
     );
   }
 
-  if (authView === 'forgot-password') {
-    return (
-      <ForgotPassword
-        onSwitchToLogin={() => setAuthView('login')}
-        onProceedToReset={(token) => {
-          setResetToken(token);
-          setAuthView('reset-password');
-        }}
-      />
-    );
-  }
-
-  if (authView === 'reset-password') {
-    return (
-      <ResetPassword
-        initialToken={resetToken}
-        onSwitchToLogin={() => setAuthView('login')}
-        onSwitchToForgotPassword={() => setAuthView('forgot-password')}
-      />
-    );
-  }
-
+  // Tampilkan Halaman Login
   if (authView === 'login') {
     return (
       <Login
         onSwitchToRegister={() => setAuthView('register')}
         onSwitchToForgotPassword={() => setAuthView('forgot-password')}
-        onSwitchToLanding={() => setAuthView('landing')}
+        onLoginSuccess={() => setAuthView('dashboard')}
       />
     );
   }
 
-  // Default: Landing Page
+  // Jika user sudah login dan berada di dashboard, tampilkan Dashboard
+  if (user && authView === 'dashboard') {
+    return <Dashboard />;
+  }
+
+  // Default: Landing Page TaskEco
   return (
     <LandingPage
       user={user}
-      onStart={handleStartNow}
+      onStart={() => {
+        if (user) {
+          setAuthView('dashboard');
+        } else {
+          setAuthView('register');
+        }
+      }}
       onLogin={() => setAuthView('login')}
       onRegister={() => setAuthView('register')}
       onGoToDashboard={() => setAuthView('dashboard')}

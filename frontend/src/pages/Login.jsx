@@ -4,7 +4,7 @@ import TaskFlowLogo from '../components/TaskFlowLogo';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api.mjs';
 
-export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }) {
+export default function Login({ onSwitchToRegister, onSwitchToForgotPassword, onLoginSuccess }) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,11 +26,11 @@ export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }) 
   }, []);
 
   const handleGoogleLogin = () => {
-    window.location.href = authService.getGoogleAuthUrl();
+    window.location.href = authService.getGoogleAuthUrl('login');
   };
 
   const handleGithubLogin = () => {
-    window.location.href = authService.getGithubAuthUrl();
+    window.location.href = authService.getGithubAuthUrl('login');
   };
 
   const handleSubmit = async (e) => {
@@ -40,6 +40,9 @@ export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }) 
 
     try {
       await login({ email, password });
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
     } catch (err) {
       setError(err.message || 'Login gagal. Periksa kembali email dan password Anda.');
     } finally {
